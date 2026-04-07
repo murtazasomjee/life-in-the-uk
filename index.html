@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Life in the UK Study App</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            uk: { blue: '#003078', red: '#D4351C', gold: '#F4C430' },
+            dark: { 900: '#0f172a', 800: '#1e293b', 700: '#334155', 600: '#475569' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .view { display: none; }
+    .view.active { display: flex; }
+
+    /* Flashcard flip */
+    .card-container { perspective: 1000px; }
+    .card-inner {
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-style: preserve-3d;
+      position: relative;
+    }
+    .card-inner.flipped { transform: rotateY(180deg); }
+    .card-front, .card-back {
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      position: absolute;
+      inset: 0;
+    }
+    .card-back { transform: rotateY(180deg); }
+
+    /* Confetti */
+    @keyframes confetti-fall {
+      0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    .confetti-piece {
+      position: fixed;
+      top: -10px;
+      animation: confetti-fall 3s ease-in forwards;
+      z-index: 9999;
+    }
+
+    /* Toast */
+    @keyframes slide-up {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .toast { animation: slide-up 0.3s ease-out; }
+
+    /* Streak calendar */
+    .streak-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+    /* Progress bar animation */
+    .progress-fill { transition: width 0.5s ease-out; }
+
+    /* Nav active indicator */
+    .nav-btn.active { color: #F4C430; }
+    .nav-btn.active svg { stroke: #F4C430; }
+
+    /* Quiz option hover */
+    .quiz-option { transition: all 0.2s; }
+    .quiz-option:hover { transform: scale(1.02); }
+    .quiz-option.correct { background: #166534 !important; border-color: #22c55e !important; }
+    .quiz-option.wrong { background: #991b1b !important; border-color: #ef4444 !important; }
+
+    /* Smooth page transitions */
+    .view { flex-direction: column; min-height: calc(100vh - 80px); }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+  </style>
+</head>
+<body class="bg-dark-900 text-white min-h-screen pb-20">
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2"></div>
+
+  <!-- ===== ONBOARDING VIEW ===== -->
+  <div id="view-onboarding" class="view active flex-col items-center justify-center px-6 min-h-screen">
+    <div class="text-center mb-8">
+      <div class="text-6xl mb-4">🇬🇧</div>
+      <h1 class="text-3xl font-bold mb-2">Life in the UK</h1>
+      <p class="text-dark-600 text-lg">Study App</p>
+    </div>
+    <div class="w-full max-w-sm space-y-4">
+      <input id="onboard-name" type="text" placeholder="Enter your name"
+        class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white text-center text-lg focus:outline-none focus:border-uk-gold">
+      <div class="text-center text-sm text-dark-600 mb-2">Pick your avatar</div>
+      <div id="emoji-picker" class="grid grid-cols-6 gap-3 justify-items-center">
+      </div>
+      <button id="onboard-start" onclick="completeOnboarding()"
+        class="w-full py-3 bg-uk-blue rounded-xl font-semibold text-lg mt-4 opacity-50 cursor-not-allowed" disabled>
+        Let's Go!
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD VIEW ===== -->
+  <div id="view-dashboard" class="view flex-col px-4 pt-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <div class="text-sm text-dark-600">Welcome back,</div>
+        <div class="text-xl font-bold" id="dash-name"></div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1 bg-dark-800 px-3 py-1.5 rounded-full">
+          <span>🔥</span>
+          <span id="dash-streak" class="font-bold text-uk-gold">0</span>
+        </div>
+        <div id="dash-avatar" class="text-3xl"></div>
+      </div>
+    </div>
+
+    <!-- Points -->
+    <div class="bg-gradient-to-r from-uk-blue to-blue-800 rounded-2xl p-4 mb-4">
+      <div class="text-sm opacity-80">Total Points</div>
+      <div class="text-3xl font-bold" id="dash-points">0</div>
+      <div class="flex items-center gap-2 mt-2">
+        <div class="text-sm opacity-80">Longest streak:</div>
+        <span id="dash-longest-streak" class="font-semibold">0 days</span>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <button onclick="startFlashcards()" class="bg-dark-800 rounded-2xl p-4 text-left hover:bg-dark-700 transition">
+        <div class="text-2xl mb-2">🃏</div>
+        <div class="font-semibold">Flashcards</div>
+        <div class="text-sm text-dark-600" id="dash-fc-count">0 mastered</div>
+      </button>
+      <button onclick="showView('quiz')" class="bg-dark-800 rounded-2xl p-4 text-left hover:bg-dark-700 transition">
+        <div class="text-2xl mb-2">📝</div>
+        <div class="font-semibold">Quiz</div>
+        <div class="text-sm text-dark-600" id="dash-quiz-count">0 completed</div>
+      </button>
+    </div>
+
+    <!-- Smart Suggestion -->
+    <div id="dash-suggestion" class="bg-dark-800 border border-dark-700 rounded-2xl p-4 mb-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span>💡</span>
+        <span class="font-semibold text-sm">Suggestion</span>
+      </div>
+      <div class="text-sm text-dark-600" id="dash-suggestion-text">Start with Chapter 1 flashcards to get going!</div>
+    </div>
+
+    <!-- Chapter Progress -->
+    <div class="mb-4">
+      <h3 class="font-semibold mb-3">Chapter Progress</h3>
+      <div id="dash-chapters" class="space-y-2"></div>
+    </div>
+
+    <!-- Recent Achievements -->
+    <div class="mb-4">
+      <h3 class="font-semibold mb-3">Achievements</h3>
+      <div id="dash-achievements" class="flex flex-wrap gap-2"></div>
+    </div>
+  </div>
+
+  <!-- ===== FLASHCARD VIEW ===== -->
+  <div id="view-flashcards" class="view flex-col px-4 pt-4">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+      <button onclick="showView('dashboard')" class="text-dark-600 hover:text-white">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <h2 class="font-semibold">Flashcards</h2>
+      <div class="text-sm text-dark-600" id="fc-counter">0/0</div>
+    </div>
+
+    <!-- Chapter/Topic Selector -->
+    <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+      <select id="fc-chapter-select" onchange="onFcChapterChange()" class="bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-sm flex-shrink-0">
+        <option value="all">All Chapters</option>
+      </select>
+      <select id="fc-topic-select" onchange="onFcTopicChange()" class="bg-dark-800 border border-dark-700 rounded-lg px-3 py-2 text-sm flex-shrink-0">
+        <option value="all">All Topics</option>
+      </select>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="bg-dark-800 rounded-full h-2 mb-4">
+      <div id="fc-progress" class="progress-fill bg-uk-gold rounded-full h-2" style="width: 0%"></div>
+    </div>
+
+    <!-- Card -->
+    <div class="card-container flex-1 flex items-center justify-center mb-4" onclick="flipCard()">
+      <div id="fc-card" class="card-inner w-full max-w-md" style="height: 300px;">
+        <div class="card-front bg-dark-800 border border-dark-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+          <div class="text-sm text-uk-gold mb-2" id="fc-topic-label"></div>
+          <div class="text-lg font-semibold" id="fc-front-text"></div>
+          <div class="text-sm text-dark-600 mt-4">Tap to reveal</div>
+        </div>
+        <div class="card-back bg-dark-800 border border-uk-gold rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+          <div class="text-sm text-uk-gold mb-2">Answer</div>
+          <div class="text-lg" id="fc-back-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex gap-3 mb-4">
+      <button id="fc-btn-review" onclick="markCard(false)"
+        class="flex-1 py-3 bg-amber-900/30 border border-amber-600 rounded-xl font-semibold text-amber-400 hidden">
+        🔄 Review Again
+      </button>
+      <button id="fc-btn-got-it" onclick="markCard(true)"
+        class="flex-1 py-3 bg-green-900/30 border border-green-600 rounded-xl font-semibold text-green-400 hidden">
+        ✅ Got It
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== QUIZ SELECTION VIEW ===== -->
+  <div id="view-quiz" class="view flex-col px-4 pt-4">
+    <div class="flex items-center justify-between mb-6">
+      <button onclick="showView('dashboard')" class="text-dark-600 hover:text-white">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <h2 class="font-semibold">Quiz Mode</h2>
+      <div></div>
+    </div>
+
+    <!-- Quiz Types -->
+    <div class="space-y-3">
+      <button onclick="startQuiz('practice')" class="w-full bg-dark-800 border border-dark-700 rounded-2xl p-5 text-left hover:border-uk-blue transition">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">📚</div>
+          <div>
+            <div class="font-semibold text-lg">Practice Quiz</div>
+            <div class="text-sm text-dark-600">10 questions from a chapter. No timer.</div>
+          </div>
+        </div>
+      </button>
+
+      <button onclick="startQuiz('mock')" class="w-full bg-dark-800 border border-uk-red/30 rounded-2xl p-5 text-left hover:border-uk-red transition">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">🎯</div>
+          <div>
+            <div class="font-semibold text-lg">Mock Test</div>
+            <div class="text-sm text-dark-600">24 questions, 45 min timer. 75% to pass.</div>
+          </div>
+        </div>
+      </button>
+
+      <button onclick="startQuiz('speed')" class="w-full bg-dark-800 border border-uk-gold/30 rounded-2xl p-5 text-left hover:border-uk-gold transition">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">⚡</div>
+          <div>
+            <div class="font-semibold text-lg">Speed Round</div>
+            <div class="text-sm text-dark-600">10 questions in 60 seconds. How fast are you?</div>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Chapter selector for practice mode -->
+    <div id="quiz-chapter-picker" class="mt-4 hidden">
+      <div class="text-sm text-dark-600 mb-2">Select a chapter:</div>
+      <div id="quiz-chapter-list" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- ===== QUIZ ACTIVE VIEW ===== -->
+  <div id="view-quiz-active" class="view flex-col px-4 pt-4">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+      <button onclick="quitQuiz()" class="text-dark-600 hover:text-white text-sm">✕ Quit</button>
+      <div class="flex items-center gap-2">
+        <span id="quiz-mode-label" class="text-sm font-semibold text-uk-gold"></span>
+        <span id="quiz-timer" class="text-sm font-mono bg-dark-800 px-2 py-1 rounded-lg hidden"></span>
+      </div>
+      <div class="text-sm text-dark-600" id="quiz-progress">1/10</div>
+    </div>
+
+    <!-- Progress dots -->
+    <div id="quiz-dots" class="flex gap-1 mb-4 overflow-x-auto pb-1 justify-center flex-wrap"></div>
+
+    <!-- Question -->
+    <div class="flex-1 flex flex-col justify-center">
+      <div class="text-lg font-semibold mb-6 text-center" id="quiz-question"></div>
+      <div id="quiz-options" class="space-y-3"></div>
+      <div id="quiz-explanation" class="mt-4 p-3 bg-dark-800 border border-dark-700 rounded-xl text-sm hidden"></div>
+      <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="mt-4 py-3 bg-uk-blue rounded-xl font-semibold hidden">
+        Next Question →
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== QUIZ RESULTS VIEW ===== -->
+  <div id="view-quiz-results" class="view flex-col px-4 pt-4 items-center justify-center">
+    <div id="results-icon" class="text-6xl mb-4"></div>
+    <div id="results-title" class="text-2xl font-bold mb-2"></div>
+    <div id="results-subtitle" class="text-dark-600 mb-6"></div>
+
+    <div class="bg-dark-800 rounded-2xl p-6 w-full max-w-sm mb-4">
+      <div class="grid grid-cols-2 gap-4 text-center">
+        <div>
+          <div class="text-3xl font-bold text-uk-gold" id="results-score">0</div>
+          <div class="text-sm text-dark-600">Correct</div>
+        </div>
+        <div>
+          <div class="text-3xl font-bold" id="results-total">0</div>
+          <div class="text-sm text-dark-600">Total</div>
+        </div>
+        <div>
+          <div class="text-3xl font-bold" id="results-percent">0%</div>
+          <div class="text-sm text-dark-600">Accuracy</div>
+        </div>
+        <div>
+          <div class="text-3xl font-bold text-uk-gold" id="results-points">+0</div>
+          <div class="text-sm text-dark-600">Points</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chapter breakdown -->
+    <div id="results-breakdown" class="w-full max-w-sm mb-4"></div>
+
+    <div class="flex gap-3 w-full max-w-sm">
+      <button onclick="showView('quiz')" class="flex-1 py-3 bg-dark-800 border border-dark-700 rounded-xl font-semibold">
+        Try Again
+      </button>
+      <button onclick="showView('dashboard')" class="flex-1 py-3 bg-uk-blue rounded-xl font-semibold">
+        Dashboard
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== STATS VIEW ===== -->
+  <div id="view-stats" class="view flex-col px-4 pt-6">
+    <h2 class="text-xl font-bold mb-4">Your Stats</h2>
+
+    <!-- Streak Calendar -->
+    <div class="bg-dark-800 rounded-2xl p-4 mb-4">
+      <h3 class="font-semibold mb-3 flex items-center gap-2">🔥 Streak Calendar</h3>
+      <div id="stats-calendar" class="grid grid-cols-7 gap-1.5 justify-items-center"></div>
+      <div class="flex justify-between text-xs text-dark-600 mt-2">
+        <span>30 days ago</span>
+        <span>Today</span>
+      </div>
+    </div>
+
+    <!-- Flashcard Stats -->
+    <div class="bg-dark-800 rounded-2xl p-4 mb-4">
+      <h3 class="font-semibold mb-3">🃏 Flashcard Mastery</h3>
+      <div id="stats-fc-chapters" class="space-y-3"></div>
+    </div>
+
+    <!-- Quiz History -->
+    <div class="bg-dark-800 rounded-2xl p-4 mb-4">
+      <h3 class="font-semibold mb-3">📝 Recent Quizzes</h3>
+      <div id="stats-quiz-history" class="space-y-2"></div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="bg-dark-800 rounded-2xl p-4 mb-4">
+      <h3 class="font-semibold mb-3">🏆 Achievements</h3>
+      <div id="stats-achievements" class="grid grid-cols-2 gap-2"></div>
+    </div>
+  </div>
+
+  <!-- ===== BOTTOM NAV ===== -->
+  <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-dark-800 border-t border-dark-700 px-4 py-2 hidden">
+    <div class="flex justify-around max-w-md mx-auto">
+      <button onclick="showView('dashboard')" class="nav-btn flex flex-col items-center gap-0.5 py-1 px-3" data-view="dashboard">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
+        <span class="text-xs">Home</span>
+      </button>
+      <button onclick="startFlashcards()" class="nav-btn flex flex-col items-center gap-0.5 py-1 px-3" data-view="flashcards">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span class="text-xs">Cards</span>
+      </button>
+      <button onclick="showView('quiz')" class="nav-btn flex flex-col items-center gap-0.5 py-1 px-3" data-view="quiz">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        <span class="text-xs">Quiz</span>
+      </button>
+      <button onclick="showView('stats')" class="nav-btn flex flex-col items-center gap-0.5 py-1 px-3" data-view="stats">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        <span class="text-xs">Stats</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Load content data -->
+  <script src="content.js"></script>
+
+  <script>
+    // ===== APP STATE =====
+    const STORAGE_KEY = 'lifeuk_data';
+    const EMOJIS = ['👨‍💼', '👩‍💼', '👨‍🎓', '👩‍🎓', '🧑‍💻', '👑', '🦁', '🏰', '🎓', '🌟', '🦊', '🐻'];
+
+    let userData = null;
+    let currentView = 'onboarding';
+
+    // Flashcard state
+    let fcDeck = [];
+    let fcIndex = 0;
+    let fcFlipped = false;
+
+    // Quiz state
+    let quizMode = null; // 'practice', 'mock', 'speed'
+    let quizQuestions = [];
+    let quizIndex = 0;
+    let quizScore = 0;
+    let quizAnswered = false;
+    let quizTimer = null;
+    let quizTimeLeft = 0;
+    let quizPointsEarned = 0;
+
+    // ===== INITIALIZATION =====
+    function init() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        userData = JSON.parse(saved);
+        showView('dashboard');
+      } else {
+        showView('onboarding');
+      }
+      renderEmojiPicker();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      }
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+    }
+
+    function getDefaultUserData(name, emoji) {
+      return {
+        name,
+        emoji,
+        points: 0,
+        streak: { current: 0, longest: 0, lastDate: null },
+        flashcards: {},
+        quizHistory: [],
+        achievements: [],
+        studyDates: []
+      };
+    }
+
+    // ===== VIEW MANAGEMENT =====
+    function showView(viewId) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-' + viewId).classList.add('active');
+      currentView = viewId;
+
+      const nav = document.getElementById('bottom-nav');
+      nav.classList.toggle('hidden', viewId === 'onboarding');
+
+      // Update nav active state
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === viewId);
+      });
+
+      // Refresh view data
+      if (viewId === 'dashboard') renderDashboard();
+      if (viewId === 'stats') renderStats();
+    }
+
+    // ===== ONBOARDING =====
+    let selectedEmoji = null;
+
+    function renderEmojiPicker() {
+      const picker = document.getElementById('emoji-picker');
+      picker.innerHTML = EMOJIS.map(e =>
+        `<button onclick="selectEmoji('${e}')" class="emoji-btn text-3xl p-2 rounded-xl hover:bg-dark-700 transition" data-emoji="${e}">${e}</button>`
+      ).join('');
+    }
+
+    function selectEmoji(emoji) {
+      selectedEmoji = emoji;
+      document.querySelectorAll('.emoji-btn').forEach(btn => {
+        btn.classList.toggle('bg-dark-700', btn.dataset.emoji === emoji);
+        btn.classList.toggle('ring-2', btn.dataset.emoji === emoji);
+        btn.classList.toggle('ring-uk-gold', btn.dataset.emoji === emoji);
+      });
+      checkOnboardReady();
+    }
+
+    document.getElementById('onboard-name')?.addEventListener('input', checkOnboardReady);
+
+    function checkOnboardReady() {
+      const name = document.getElementById('onboard-name').value.trim();
+      const btn = document.getElementById('onboard-start');
+      const ready = name.length > 0 && selectedEmoji;
+      btn.disabled = !ready;
+      btn.classList.toggle('opacity-50', !ready);
+      btn.classList.toggle('cursor-not-allowed', !ready);
+    }
+
+    function completeOnboarding() {
+      const name = document.getElementById('onboard-name').value.trim();
+      if (!name || !selectedEmoji) return;
+      userData = getDefaultUserData(name, selectedEmoji);
+      save();
+      recordStudyDate();
+      showView('dashboard');
+      showToast('🎉', `Welcome, ${name}! Let's get started!`);
+    }
+
+    // ===== STREAK & STUDY TRACKING =====
+    function getTodayStr() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    function recordStudyDate() {
+      const today = getTodayStr();
+      if (!userData.studyDates.includes(today)) {
+        userData.studyDates.push(today);
+      }
+      updateStreak();
+      save();
+    }
+
+    function updateStreak() {
+      const today = new Date();
+      const lastDate = userData.streak.lastDate ? new Date(userData.streak.lastDate) : null;
+      const todayStr = getTodayStr();
+
+      if (userData.streak.lastDate === todayStr) return;
+
+      if (lastDate) {
+        const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          userData.streak.current++;
+        } else if (diffDays > 1) {
+          userData.streak.current = 1;
+        }
+      } else {
+        userData.streak.current = 1;
+      }
+
+      userData.streak.lastDate = todayStr;
+      userData.streak.longest = Math.max(userData.streak.longest, userData.streak.current);
+      save();
+    }
+
+    // ===== POINTS =====
+    function addPoints(amount) {
+      userData.points += amount;
+      save();
+    }
+
+    // ===== ACHIEVEMENTS =====
+    const ACHIEVEMENTS = {
+      first_steps: { icon: '🎯', name: 'First Steps', desc: 'Complete your first flashcard session' },
+      quiz_whiz: { icon: '🧠', name: 'Quiz Whiz', desc: 'Score 100% on a practice quiz' },
+      test_ready: { icon: '✅', name: 'Test Ready', desc: 'Pass a mock test (75%+)' },
+      speed_demon: { icon: '⚡', name: 'Speed Demon', desc: 'Score 8+ on a speed round' },
+      chapter_1: { icon: '📖', name: 'Ch1 Champion', desc: 'Master all Ch1 flashcards' },
+      chapter_2: { icon: '📖', name: 'Ch2 Champion', desc: 'Master all Ch2 flashcards' },
+      chapter_3: { icon: '📖', name: 'Ch3 Champion', desc: 'Master all Ch3 flashcards' },
+      chapter_4: { icon: '📖', name: 'Ch4 Champion', desc: 'Master all Ch4 flashcards' },
+      chapter_5: { icon: '📖', name: 'Ch5 Champion', desc: 'Master all Ch5 flashcards' },
+      scholar: { icon: '🎓', name: 'Scholar', desc: 'Master all flashcards' },
+      ten_quizzes: { icon: '🏅', name: 'Dedicated', desc: 'Complete 10 quizzes' },
+      perfect_mock: { icon: '👑', name: 'Perfection', desc: 'Score 100% on a mock test' },
+    };
+
+    function checkAchievements() {
+      const a = userData.achievements;
+
+      // First steps
+      if (!a.includes('first_steps') && Object.keys(userData.flashcards).length >= 5) {
+        unlockAchievement('first_steps');
+      }
+
+      // Chapter champions
+      if (typeof CONTENT !== 'undefined') {
+        CONTENT.chapters.forEach(ch => {
+          const key = 'chapter_' + ch.id;
+          if (!a.includes(key)) {
+            const allCards = ch.topics.flatMap(t => t.flashcards);
+            const mastered = allCards.filter(c => userData.flashcards[c.id]?.mastered).length;
+            if (mastered === allCards.length && allCards.length > 0) {
+              unlockAchievement(key);
+            }
+          }
+        });
+
+        // Scholar
+        if (!a.includes('scholar')) {
+          const allCards = CONTENT.chapters.flatMap(ch => ch.topics.flatMap(t => t.flashcards));
+          const mastered = allCards.filter(c => userData.flashcards[c.id]?.mastered).length;
+          if (mastered === allCards.length && allCards.length > 0) {
+            unlockAchievement('scholar');
+          }
+        }
+      }
+
+      // Ten quizzes
+      if (!a.includes('ten_quizzes') && userData.quizHistory.length >= 10) {
+        unlockAchievement('ten_quizzes');
+      }
+    }
+
+    function unlockAchievement(id) {
+      if (userData.achievements.includes(id)) return;
+      userData.achievements.push(id);
+      save();
+      const ach = ACHIEVEMENTS[id];
+      showToast(ach.icon, `Achievement: ${ach.name}!`);
+    }
+
+    // ===== DASHBOARD =====
+    function renderDashboard() {
+      if (!userData) return;
+      document.getElementById('dash-name').textContent = userData.name;
+      document.getElementById('dash-avatar').textContent = userData.emoji;
+      document.getElementById('dash-streak').textContent = userData.streak.current;
+      document.getElementById('dash-points').textContent = userData.points.toLocaleString();
+      document.getElementById('dash-longest-streak').textContent = userData.streak.longest + ' days';
+
+      // Flashcard count
+      const mastered = Object.values(userData.flashcards).filter(f => f.mastered).length;
+      document.getElementById('dash-fc-count').textContent = mastered + ' mastered';
+
+      // Quiz count
+      document.getElementById('dash-quiz-count').textContent = userData.quizHistory.length + ' completed';
+
+      // Chapter progress
+      const chapDiv = document.getElementById('dash-chapters');
+      if (typeof CONTENT !== 'undefined') {
+        chapDiv.innerHTML = CONTENT.chapters.map(ch => {
+          const allCards = ch.topics.flatMap(t => t.flashcards);
+          const masteredCount = allCards.filter(c => userData.flashcards[c.id]?.mastered).length;
+          const pct = allCards.length > 0 ? Math.round((masteredCount / allCards.length) * 100) : 0;
+          return `
+            <div class="flex items-center gap-3">
+              <div class="text-xs text-dark-600 w-20 truncate">Ch${ch.id}</div>
+              <div class="flex-1 bg-dark-700 rounded-full h-2">
+                <div class="progress-fill bg-uk-gold rounded-full h-2" style="width: ${pct}%"></div>
+              </div>
+              <div class="text-xs text-dark-600 w-10 text-right">${pct}%</div>
+            </div>
+          `;
+        }).join('');
+
+        // Smart suggestion
+        const weakest = findWeakestArea();
+        if (weakest) {
+          document.getElementById('dash-suggestion-text').textContent = weakest;
+        }
+      }
+
+      // Achievements
+      const achDiv = document.getElementById('dash-achievements');
+      achDiv.innerHTML = Object.entries(ACHIEVEMENTS).map(([id, ach]) => {
+        const unlocked = userData.achievements.includes(id);
+        return `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${unlocked ? 'bg-uk-gold/20 text-uk-gold' : 'bg-dark-700 text-dark-600'}">${ach.icon} ${ach.name}</span>`;
+      }).join('');
+    }
+
+    function findWeakestArea() {
+      if (typeof CONTENT === 'undefined') return null;
+      let weakest = null;
+      let lowestPct = 101;
+      CONTENT.chapters.forEach(ch => {
+        ch.topics.forEach(topic => {
+          if (topic.flashcards.length === 0) return;
+          const masteredCount = topic.flashcards.filter(c => userData.flashcards[c.id]?.mastered).length;
+          const pct = (masteredCount / topic.flashcards.length) * 100;
+          if (pct < lowestPct) {
+            lowestPct = pct;
+            weakest = topic.title;
+          }
+        });
+      });
+      if (lowestPct >= 100) return "You've mastered everything! Try a mock test!";
+      if (lowestPct === 0) return `Start with "${weakest}" flashcards!`;
+      return `Focus on "${weakest}" — only ${Math.round(lowestPct)}% mastered.`;
+    }
+
+    // ===== FLASHCARDS =====
+    function startFlashcards() {
+      showView('flashcards');
+      populateChapterSelect();
+      loadFlashcardDeck();
+    }
+
+    function populateChapterSelect() {
+      if (typeof CONTENT === 'undefined') return;
+      const sel = document.getElementById('fc-chapter-select');
+      sel.innerHTML = '<option value="all">All Chapters</option>' +
+        CONTENT.chapters.map(ch => `<option value="${ch.id}">Ch${ch.id}: ${ch.title}</option>`).join('');
+    }
+
+    function onFcChapterChange() {
+      const chId = document.getElementById('fc-chapter-select').value;
+      const topicSel = document.getElementById('fc-topic-select');
+      if (chId === 'all' || typeof CONTENT === 'undefined') {
+        topicSel.innerHTML = '<option value="all">All Topics</option>';
+      } else {
+        const ch = CONTENT.chapters.find(c => c.id == chId);
+        topicSel.innerHTML = '<option value="all">All Topics</option>' +
+          ch.topics.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+      }
+      loadFlashcardDeck();
+    }
+
+    function onFcTopicChange() {
+      loadFlashcardDeck();
+    }
+
+    function loadFlashcardDeck() {
+      if (typeof CONTENT === 'undefined') {
+        fcDeck = [];
+        renderFlashcard();
+        return;
+      }
+      const chId = document.getElementById('fc-chapter-select').value;
+      const topicId = document.getElementById('fc-topic-select').value;
+
+      let cards = [];
+      CONTENT.chapters.forEach(ch => {
+        if (chId !== 'all' && ch.id != chId) return;
+        ch.topics.forEach(topic => {
+          if (topicId !== 'all' && topic.id !== topicId) return;
+          cards = cards.concat(topic.flashcards.map(fc => ({ ...fc, topicTitle: topic.title, chapterId: ch.id })));
+        });
+      });
+
+      // Spaced repetition: unmastered cards appear 3x more
+      const weighted = [];
+      cards.forEach(card => {
+        const status = userData.flashcards[card.id];
+        if (status?.mastered) {
+          weighted.push(card);
+        } else {
+          weighted.push(card, card, card);
+        }
+      });
+
+      // Shuffle
+      for (let i = weighted.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [weighted[i], weighted[j]] = [weighted[j], weighted[i]];
+      }
+
+      // Deduplicate consecutive
+      fcDeck = [];
+      let lastId = null;
+      weighted.forEach(card => {
+        if (card.id !== lastId) {
+          fcDeck.push(card);
+          lastId = card.id;
+        }
+      });
+
+      fcIndex = 0;
+      fcFlipped = false;
+      renderFlashcard();
+    }
+
+    function renderFlashcard() {
+      const card = fcDeck[fcIndex];
+      const counter = document.getElementById('fc-counter');
+      const progress = document.getElementById('fc-progress');
+      const frontText = document.getElementById('fc-front-text');
+      const backText = document.getElementById('fc-back-text');
+      const topicLabel = document.getElementById('fc-topic-label');
+      const cardInner = document.getElementById('fc-card');
+
+      if (!card) {
+        counter.textContent = '0/0';
+        frontText.textContent = 'No flashcards available';
+        backText.textContent = '';
+        topicLabel.textContent = '';
+        progress.style.width = '0%';
+        document.getElementById('fc-btn-review').classList.add('hidden');
+        document.getElementById('fc-btn-got-it').classList.add('hidden');
+        return;
+      }
+
+      counter.textContent = `${fcIndex + 1}/${fcDeck.length}`;
+      progress.style.width = `${((fcIndex + 1) / fcDeck.length) * 100}%`;
+      frontText.textContent = card.front;
+      backText.textContent = card.back;
+      topicLabel.textContent = card.topicTitle || '';
+
+      cardInner.classList.remove('flipped');
+      fcFlipped = false;
+      document.getElementById('fc-btn-review').classList.add('hidden');
+      document.getElementById('fc-btn-got-it').classList.add('hidden');
+    }
+
+    function flipCard() {
+      if (fcDeck.length === 0) return;
+      const cardInner = document.getElementById('fc-card');
+      fcFlipped = !fcFlipped;
+      cardInner.classList.toggle('flipped', fcFlipped);
+
+      if (fcFlipped) {
+        document.getElementById('fc-btn-review').classList.remove('hidden');
+        document.getElementById('fc-btn-got-it').classList.remove('hidden');
+      }
+    }
+
+    function markCard(gotIt) {
+      const card = fcDeck[fcIndex];
+      if (!card) return;
+
+      if (!userData.flashcards[card.id]) {
+        userData.flashcards[card.id] = { seen: true, mastered: false, lastSeen: getTodayStr() };
+      }
+
+      userData.flashcards[card.id].lastSeen = getTodayStr();
+
+      if (gotIt) {
+        userData.flashcards[card.id].mastered = true;
+        addPoints(userData.flashcards[card.id].mastered ? 5 : 10);
+      } else {
+        userData.flashcards[card.id].mastered = false;
+        addPoints(5);
+      }
+
+      recordStudyDate();
+      checkAchievements();
+
+      fcIndex++;
+      if (fcIndex >= fcDeck.length) {
+        showToast('🃏', 'Deck complete! Great job!');
+        loadFlashcardDeck();
+      } else {
+        renderFlashcard();
+      }
+    }
+
+    // ===== QUIZ =====
+    function startQuiz(mode) {
+      quizMode = mode;
+      if (mode === 'practice') {
+        showChapterPicker();
+        return;
+      }
+      launchQuiz(mode);
+    }
+
+    function showChapterPicker() {
+      if (typeof CONTENT === 'undefined') return;
+      const picker = document.getElementById('quiz-chapter-picker');
+      const list = document.getElementById('quiz-chapter-list');
+      picker.classList.remove('hidden');
+      list.innerHTML = CONTENT.chapters.map(ch =>
+        `<button onclick="launchQuiz('practice', ${ch.id})" class="w-full bg-dark-700 hover:bg-dark-600 rounded-xl p-3 text-left transition">
+          <span class="font-semibold">Ch${ch.id}:</span> ${ch.title}
+        </button>`
+      ).join('');
+    }
+
+    function launchQuiz(mode, chapterId) {
+      document.getElementById('quiz-chapter-picker')?.classList.add('hidden');
+      quizMode = mode;
+      quizIndex = 0;
+      quizScore = 0;
+      quizAnswered = false;
+      quizPointsEarned = 0;
+
+      if (quizTimer) { clearInterval(quizTimer); quizTimer = null; }
+
+      // Gather questions
+      if (typeof CONTENT === 'undefined') return;
+      let allQ = [];
+      CONTENT.chapters.forEach(ch => {
+        if (mode === 'practice' && ch.id != chapterId) return;
+        ch.topics.forEach(t => {
+          allQ = allQ.concat(t.questions.map(q => ({ ...q, chapterId: ch.id, chapterTitle: ch.title })));
+        });
+      });
+
+      // Shuffle
+      for (let i = allQ.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allQ[i], allQ[j]] = [allQ[j], allQ[i]];
+      }
+
+      // Pick questions
+      const count = mode === 'mock' ? 24 : 10;
+      quizQuestions = allQ.slice(0, Math.min(count, allQ.length));
+
+      // Timer
+      const timerEl = document.getElementById('quiz-timer');
+      if (mode === 'mock') {
+        quizTimeLeft = 45 * 60;
+        timerEl.classList.remove('hidden');
+        startTimer();
+      } else if (mode === 'speed') {
+        quizTimeLeft = 60;
+        timerEl.classList.remove('hidden');
+        startTimer();
+      } else {
+        timerEl.classList.add('hidden');
+      }
+
+      // Mode label
+      const labels = { practice: '📚 Practice', mock: '🎯 Mock Test', speed: '⚡ Speed Round' };
+      document.getElementById('quiz-mode-label').textContent = labels[mode];
+
+      showView('quiz-active');
+      renderQuizQuestion();
+    }
+
+    function startTimer() {
+      const timerEl = document.getElementById('quiz-timer');
+      updateTimerDisplay();
+      quizTimer = setInterval(() => {
+        quizTimeLeft--;
+        updateTimerDisplay();
+        if (quizTimeLeft <= 0) {
+          clearInterval(quizTimer);
+          quizTimer = null;
+          finishQuiz();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const timerEl = document.getElementById('quiz-timer');
+      const mins = Math.floor(quizTimeLeft / 60);
+      const secs = quizTimeLeft % 60;
+      timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+      timerEl.classList.toggle('text-uk-red', quizTimeLeft < 30);
+    }
+
+    function renderQuizQuestion() {
+      const q = quizQuestions[quizIndex];
+      if (!q) return;
+
+      document.getElementById('quiz-progress').textContent = `${quizIndex + 1}/${quizQuestions.length}`;
+      document.getElementById('quiz-question').textContent = q.question;
+      document.getElementById('quiz-explanation').classList.add('hidden');
+      document.getElementById('quiz-next-btn').classList.add('hidden');
+      quizAnswered = false;
+
+      // Render dots
+      const dots = document.getElementById('quiz-dots');
+      dots.innerHTML = quizQuestions.map((_, i) => {
+        let color = 'bg-dark-700';
+        if (i < quizIndex) color = quizQuestions[i]._correct ? 'bg-green-500' : 'bg-red-500';
+        if (i === quizIndex) color = 'bg-uk-gold';
+        return `<div class="w-2.5 h-2.5 rounded-full ${color}"></div>`;
+      }).join('');
+
+      // Render options
+      const optDiv = document.getElementById('quiz-options');
+      optDiv.innerHTML = q.options.map((opt, i) =>
+        `<button onclick="answerQuiz(${i})" class="quiz-option w-full p-4 bg-dark-800 border border-dark-700 rounded-xl text-left hover:border-dark-600">
+          <span class="text-dark-600 mr-2">${String.fromCharCode(65 + i)}.</span> ${opt}
+        </button>`
+      ).join('');
+    }
+
+    function answerQuiz(idx) {
+      if (quizAnswered) return;
+      quizAnswered = true;
+
+      const q = quizQuestions[quizIndex];
+      const correct = idx === q.correctIndex;
+      q._correct = correct;
+
+      if (correct) {
+        quizScore++;
+        const pts = quizMode === 'speed' ? 15 : 10;
+        quizPointsEarned += pts;
+      }
+
+      // Highlight options
+      const buttons = document.querySelectorAll('#quiz-options .quiz-option');
+      buttons.forEach((btn, i) => {
+        if (i === q.correctIndex) btn.classList.add('correct');
+        else if (i === idx && !correct) btn.classList.add('wrong');
+        btn.onclick = null;
+      });
+
+      // Show explanation
+      if (q.explanation) {
+        const expEl = document.getElementById('quiz-explanation');
+        expEl.textContent = (correct ? '✅ Correct! ' : '❌ Incorrect. ') + q.explanation;
+        expEl.classList.remove('hidden');
+      }
+
+      // Auto-advance for speed mode
+      if (quizMode === 'speed') {
+        setTimeout(() => nextQuizQuestion(), 800);
+      } else {
+        document.getElementById('quiz-next-btn').classList.remove('hidden');
+      }
+    }
+
+    function nextQuizQuestion() {
+      quizIndex++;
+      if (quizIndex >= quizQuestions.length) {
+        finishQuiz();
+      } else {
+        renderQuizQuestion();
+      }
+    }
+
+    function finishQuiz() {
+      if (quizTimer) { clearInterval(quizTimer); quizTimer = null; }
+
+      const total = quizQuestions.length;
+      const pct = Math.round((quizScore / total) * 100);
+      const passed = quizMode === 'mock' ? pct >= 75 : true;
+
+      // Bonus points
+      if (quizScore === total) quizPointsEarned += 50;
+      if (quizMode === 'mock' && passed) quizPointsEarned += 100;
+      if (quizMode === 'mock' && quizScore === total) quizPointsEarned += 200;
+
+      addPoints(quizPointsEarned);
+      recordStudyDate();
+
+      // Save to history
+      userData.quizHistory.push({
+        date: getTodayStr(),
+        mode: quizMode,
+        score: quizScore,
+        total,
+        percent: pct
+      });
+      save();
+
+      // Check achievements
+      if (pct === 100 && quizMode === 'practice') unlockAchievement('quiz_whiz');
+      if (quizMode === 'mock' && passed) unlockAchievement('test_ready');
+      if (quizMode === 'mock' && pct === 100) unlockAchievement('perfect_mock');
+      if (quizMode === 'speed' && quizScore >= 8) unlockAchievement('speed_demon');
+      checkAchievements();
+
+      // Render results
+      showView('quiz-results');
+      document.getElementById('results-score').textContent = quizScore;
+      document.getElementById('results-total').textContent = total;
+      document.getElementById('results-percent').textContent = pct + '%';
+      document.getElementById('results-points').textContent = '+' + quizPointsEarned;
+
+      if (quizMode === 'mock') {
+        document.getElementById('results-icon').textContent = passed ? '🎉' : '😤';
+        document.getElementById('results-title').textContent = passed ? 'You Passed!' : 'Not Quite...';
+        document.getElementById('results-subtitle').textContent = passed
+          ? `Amazing! You scored ${pct}% — you're ready!`
+          : `You need 75% to pass. You got ${pct}%. Keep studying!`;
+        if (passed && pct === 100) triggerConfetti();
+      } else if (quizMode === 'speed') {
+        document.getElementById('results-icon').textContent = quizScore >= 8 ? '⚡' : '🏃';
+        document.getElementById('results-title').textContent = `${quizScore}/10 in 60s!`;
+        document.getElementById('results-subtitle').textContent = quizScore >= 8 ? 'Lightning fast!' : 'Keep practicing!';
+      } else {
+        document.getElementById('results-icon').textContent = pct === 100 ? '🌟' : '📚';
+        document.getElementById('results-title').textContent = pct === 100 ? 'Perfect!' : 'Good effort!';
+        document.getElementById('results-subtitle').textContent = `You got ${quizScore}/${total} correct.`;
+      }
+
+      // Chapter breakdown
+      if (quizMode === 'mock') {
+        const breakdown = {};
+        quizQuestions.forEach(q => {
+          if (!breakdown[q.chapterId]) breakdown[q.chapterId] = { correct: 0, total: 0, title: q.chapterTitle };
+          breakdown[q.chapterId].total++;
+          if (q._correct) breakdown[q.chapterId].correct++;
+        });
+        const bdDiv = document.getElementById('results-breakdown');
+        bdDiv.innerHTML = '<div class="text-sm font-semibold mb-2">By Chapter:</div>' +
+          Object.entries(breakdown).map(([id, d]) =>
+            `<div class="flex justify-between text-sm py-1 border-b border-dark-700">
+              <span class="text-dark-600">Ch${id}</span>
+              <span>${d.correct}/${d.total}</span>
+            </div>`
+          ).join('');
+      } else {
+        document.getElementById('results-breakdown').innerHTML = '';
+      }
+    }
+
+    function quitQuiz() {
+      if (quizTimer) { clearInterval(quizTimer); quizTimer = null; }
+      showView('quiz');
+    }
+
+    // ===== STATS =====
+    function renderStats() {
+      if (!userData) return;
+
+      // Streak calendar
+      const calDiv = document.getElementById('stats-calendar');
+      const today = new Date();
+      let calHTML = '';
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const studied = userData.studyDates.includes(dateStr);
+        const isToday = i === 0;
+        calHTML += `<div class="streak-dot ${studied ? 'bg-uk-gold' : 'bg-dark-700'} ${isToday ? 'ring-2 ring-white' : ''}" title="${dateStr}"></div>`;
+      }
+      calDiv.innerHTML = calHTML;
+
+      // Flashcard mastery by chapter
+      const fcDiv = document.getElementById('stats-fc-chapters');
+      if (typeof CONTENT !== 'undefined') {
+        fcDiv.innerHTML = CONTENT.chapters.map(ch => {
+          const allCards = ch.topics.flatMap(t => t.flashcards);
+          const mastered = allCards.filter(c => userData.flashcards[c.id]?.mastered).length;
+          const pct = allCards.length > 0 ? Math.round((mastered / allCards.length) * 100) : 0;
+          return `
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>Ch${ch.id}: ${ch.title}</span>
+                <span class="text-dark-600">${mastered}/${allCards.length}</span>
+              </div>
+              <div class="bg-dark-700 rounded-full h-2">
+                <div class="progress-fill bg-uk-gold rounded-full h-2" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Quiz history
+      const histDiv = document.getElementById('stats-quiz-history');
+      const recent = userData.quizHistory.slice(-10).reverse();
+      if (recent.length === 0) {
+        histDiv.innerHTML = '<div class="text-sm text-dark-600">No quizzes completed yet.</div>';
+      } else {
+        histDiv.innerHTML = recent.map(q => {
+          const modeIcons = { practice: '📚', mock: '🎯', speed: '⚡' };
+          return `
+            <div class="flex items-center justify-between py-2 border-b border-dark-700">
+              <div class="flex items-center gap-2">
+                <span>${modeIcons[q.mode] || '📝'}</span>
+                <span class="text-sm">${q.mode.charAt(0).toUpperCase() + q.mode.slice(1)}</span>
+              </div>
+              <div class="text-sm">
+                <span class="font-semibold ${q.percent >= 75 ? 'text-green-400' : 'text-red-400'}">${q.percent}%</span>
+                <span class="text-dark-600 ml-1">(${q.score}/${q.total})</span>
+              </div>
+              <div class="text-xs text-dark-600">${q.date}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Achievements
+      const achDiv = document.getElementById('stats-achievements');
+      achDiv.innerHTML = Object.entries(ACHIEVEMENTS).map(([id, ach]) => {
+        const unlocked = userData.achievements.includes(id);
+        return `
+          <div class="p-3 rounded-xl ${unlocked ? 'bg-uk-gold/10 border border-uk-gold/30' : 'bg-dark-700 opacity-50'}">
+            <div class="text-2xl mb-1">${ach.icon}</div>
+            <div class="text-sm font-semibold">${ach.name}</div>
+            <div class="text-xs text-dark-600">${ach.desc}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ===== TOAST =====
+    function showToast(icon, message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast bg-dark-800 border border-dark-700 rounded-xl px-4 py-3 flex items-center gap-2 shadow-lg';
+      toast.innerHTML = `<span class="text-xl">${icon}</span><span class="text-sm">${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // ===== CONFETTI =====
+    function triggerConfetti() {
+      const colors = ['#D4351C', '#003078', '#F4C430', '#FFFFFF', '#22c55e'];
+      for (let i = 0; i < 50; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = Math.random() * 100 + 'vw';
+        piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.width = Math.random() * 8 + 4 + 'px';
+        piece.style.height = Math.random() * 8 + 4 + 'px';
+        piece.style.animationDelay = Math.random() * 2 + 's';
+        piece.style.animationDuration = Math.random() * 2 + 2 + 's';
+        document.body.appendChild(piece);
+        setTimeout(() => piece.remove(), 5000);
+      }
+    }
+
+    // ===== INIT =====
+    init();
+  </script>
+</body>
+</html>

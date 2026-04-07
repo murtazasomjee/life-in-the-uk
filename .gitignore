@@ -1,0 +1,6 @@
+.DS_Store
+.claude/
+document.pdf
+document.txt
+content_ch*.js
+/tmp/
