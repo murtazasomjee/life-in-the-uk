@@ -6,26 +6,6 @@ const CHAPTER_1 = {
   title: "The Values and Principles of the UK",
   topics: [
     {
-      id: "1.1",
-      title: "Becoming a Permanent Resident",
-      flashcards: [
-        { id: "fc_1_1_1", front: "What two things do you need to apply for permanent residence or citizenship?", back: "You need to speak and read English, and have a good understanding of life in the UK." },
-        { id: "fc_1_1_2", front: "What are the two ways to be tested for permanent residence (as of January 2013)?", back: "1) Take the Life in the UK test, or 2) Pass an ESOL course in English with Citizenship." },
-        { id: "fc_1_1_3", front: "What level of English is required for the Life in the UK test?", back: "ESOL Entry Level 3 (equivalent to B1 of the Common European Framework of Reference)." },
-        { id: "fc_1_1_4", front: "Who normally must pass the Life in the UK test to become permanent residents?", back: "People on work visas, including those on Tier 1 and Tier 2 of the points-based system." },
-        { id: "fc_1_1_5", front: "When should you take an ESOL course in English with Citizenship instead of the Life in the UK test?", back: "If your standard of English is below ESOL Entry Level 3." },
-        { id: "fc_1_1_6", front: "Where can you find application forms and fees for permanent residence?", back: "On the UK Border Agency website (www.ukba.homeoffice.gov.uk)." },
-        { id: "fc_1_1_7", front: "From October 2013, what two things do you need for settlement?", back: "1) Pass the Life in the UK test, AND 2) Produce evidence of speaking and listening skills in English at B1 level." },
-      ],
-      questions: [
-        { id: "q_1_1_1", question: "What level of English is the Life in the UK test written at?", options: ["ESOL Entry Level 1", "ESOL Entry Level 2", "ESOL Entry Level 3", "ESOL Entry Level 4"], correctIndex: 2, explanation: "The test requires understanding at ESOL Entry Level 3, equivalent to B1 of the Common European Framework." },
-        { id: "q_1_1_2", question: "How can you be tested on your knowledge of life in the UK?", options: ["Take the Life in the UK test or pass an ESOL course with Citizenship", "Only by taking the Life in the UK test", "By interview at the Home Office", "By completing an online assessment"], correctIndex: 0, explanation: "There are two routes: the Life in the UK test or an ESOL course in English with Citizenship." },
-        { id: "q_1_1_3", question: "Who typically needs to pass the Life in the UK test?", options: ["People on Tier 1 and Tier 2 work visas", "Only EU citizens", "Students on Tier 4 visas", "Visitors on tourist visas"], correctIndex: 0, explanation: "People on work visas including Tier 1 and Tier 2 of the points-based system normally must pass it." },
-        { id: "q_1_1_4", question: "What is B1 of the Common European Framework equivalent to?", options: ["ESOL Entry Level 1", "ESOL Entry Level 2", "ESOL Entry Level 3", "GCSE English"], correctIndex: 2, explanation: "B1 is equivalent to ESOL Entry Level 3." },
-        { id: "q_1_1_5", question: "Where can you find information about forms and fees for permanent residence applications?", options: ["The local council website", "The UK Border Agency website", "The NHS website", "The Royal Mail website"], correctIndex: 1, explanation: "All forms and fees can be found on the UK Border Agency website." },
-      ]
-    },
-    {
       id: "1.2",
       title: "The Values and Principles of the UK",
       flashcards: [
@@ -42,26 +22,6 @@ const CHAPTER_1 = {
         { id: "q_1_2_3", question: "Which of these is a freedom offered by the UK to its residents?", options: ["Free healthcare for all visitors", "Freedom from unfair discrimination", "Guaranteed employment", "Free university education"], correctIndex: 1, explanation: "The UK offers freedom of belief, freedom of speech, freedom from unfair discrimination, right to a fair trial, and right to participate in elections." },
         { id: "q_1_2_4", question: "Which of the following is a responsibility of UK residents?", options: ["Look after the area in which you live and the environment", "Attend church regularly", "Vote in every election", "Join a political party"], correctIndex: 0, explanation: "Responsibilities include respecting the law, treating others fairly, looking after yourself and family, and looking after your area and the environment." },
         { id: "q_1_2_5", question: "What is there no place for in British society?", options: ["Immigration", "Extremism or intolerance", "Religious belief", "Political debate"], correctIndex: 1, explanation: "The handbook states there is no place in British society for extremism or intolerance." },
-      ]
-    },
-    {
-      id: "1.3",
-      title: "Taking the Life in the UK Test",
-      flashcards: [
-        { id: "fc_1_3_1", front: "How many questions are on the Life in the UK test?", back: "24 questions." },
-        { id: "fc_1_3_2", front: "What are the questions on the Life in the UK test based on?", back: "ALL parts of the handbook, including the introductory chapter." },
-        { id: "fc_1_3_3", front: "In which languages can you take the Life in the UK test?", back: "English (usually), but special arrangements can be made for Welsh or Scottish Gaelic." },
-        { id: "fc_1_3_4", front: "Where can you take the Life in the UK test?", back: "Only at a registered and approved Life in the UK test centre. There are about 60 test centres around the UK." },
-        { id: "fc_1_3_5", front: "How do you book the Life in the UK test?", back: "You can only book online at www.lifeintheuktest.gov.uk." },
-        { id: "fc_1_3_6", front: "What do you need to bring to the Life in the UK test?", back: "Identification and proof of your address. Without these you cannot take the test." },
-        { id: "fc_1_3_7", front: "Are the test questions the same for everyone?", back: "No. The 24 questions will be different for each person taking the test at that test session." },
-      ],
-      questions: [
-        { id: "q_1_3_1", question: "How many questions are on the Life in the UK test?", options: ["20", "24", "30", "40"], correctIndex: 1, explanation: "The test consists of 24 questions about important aspects of life in the UK." },
-        { id: "q_1_3_2", question: "In which language is the Life in the UK test usually taken?", options: ["Welsh", "English", "Scottish Gaelic", "Any EU language"], correctIndex: 1, explanation: "The test is usually taken in English, with special arrangements available for Welsh or Scottish Gaelic." },
-        { id: "q_1_3_3", question: "How many registered test centres are there in the UK?", options: ["About 30", "About 60", "About 100", "About 200"], correctIndex: 1, explanation: "There are about 60 registered test centres around the UK." },
-        { id: "q_1_3_4", question: "How can you book the Life in the UK test?", options: ["By phone", "By post", "Only online", "At the test centre in person"], correctIndex: 2, explanation: "You can only book your test online at www.lifeintheuktest.gov.uk." },
-        { id: "q_1_3_5", question: "What happens if you don't bring identification to the test?", options: ["You can still take the test", "You will not be able to take the test", "You take a different version", "You must pay an extra fee"], correctIndex: 1, explanation: "If you don't take identification and proof of address, you will not be able to take the test." },
       ]
     }
   ]
@@ -396,7 +356,7 @@ const CHAPTER_3 = {
         { id: "fc_3_6_18", front: "What inventions and developments happened in the 20th century in Britain?", back: "Important developments include the jet engine (Frank Whittle), radar, DNA structure discovery (Crick and Watson), the development of the World Wide Web (Tim Berners-Lee), and Dolly the sheep (first mammal cloned)." },
         { id: "fc_3_6_19", front: "Who invented the World Wide Web?", back: "Sir Tim Berners-Lee, a British scientist, invented the World Wide Web in 1989." },
         { id: "fc_3_6_20", front: "Who discovered the structure of DNA?", back: "Francis Crick, a British scientist, along with James Watson, discovered the structure of the DNA molecule in 1953." },
-        { id: "fc_3_6_21", front: "What is the Commonwealth?", back: "The Commonwealth is a voluntary association of independent countries, most of which were once part of the British Empire. The monarch of the UK is the head of the Commonwealth." },
+        { id: "fc_3_6_21", front: "What association of countries was formed from the former British Empire?", back: "The Commonwealth — a voluntary association of independent countries, most of which were once part of the British Empire. The monarch of the UK is the head of the Commonwealth." },
         { id: "fc_3_6_22", front: "What did the Beveridge Report recommend?", back: "The Beveridge Report (1942) recommended that the government should provide a comprehensive social insurance scheme to tackle want, disease, ignorance, squalor, and idleness (the 'five giants')." },
         { id: "fc_3_6_23", front: "Who invented the jet engine?", back: "Sir Frank Whittle, a British pilot and engineer, developed the jet engine in the 1930s." },
         { id: "fc_3_6_24", front: "What was Dolly the sheep?", back: "Dolly the sheep was the first mammal to be successfully cloned from an adult cell. She was cloned by scientists at the Roslin Institute in Scotland in 1996." },
@@ -576,7 +536,7 @@ const CHAPTER_4 = {
         { id: "fc_4_3_8", front: "What must everyone with a TV or device for watching TV have?", back: "A television licence. People over 75 can apply for a free licence. Blind people get a 50% discount. The fine for not having one is up to £1,000." },
         { id: "fc_4_3_9", front: "What is the BBC funded by?", back: "Money from TV licences. It is the largest broadcaster in the world and the only wholly state-funded media organisation independent of government." },
         { id: "fc_4_3_10", front: "What is the minimum age to buy alcohol in a pub?", back: "18. However, at 16 people can drink wine or beer with a meal in a hotel or restaurant as long as they are with someone over 18." },
-        { id: "fc_4_3_11", front: "What is the minimum age to enter betting shops or gambling clubs?", back: "18." },
+        { id: "fc_4_3_11", front: "What is the minimum age to enter betting shops or gambling clubs?", back: "18 years old. You must be 18 or over to place a bet in the UK." },
         { id: "fc_4_3_12", front: "What law applies to dogs in public places?", back: "All dogs must wear a collar showing the name and address of the owner. The owner must keep the dog under control and clean up after it." },
         { id: "fc_4_3_13", front: "What is an allotment?", back: "Additional land that people can rent to grow fruit and vegetables." },
       ],
@@ -621,7 +581,7 @@ const CHAPTER_4 = {
       id: "4.5",
       title: "Religion",
       flashcards: [
-        { id: "fc_4_5_1", front: "What percentage of people identified as Christian in the 2009 Citizenship Survey?", back: "70%." },
+        { id: "fc_4_5_1", front: "What percentage of people identified as Christian in the 2009 Citizenship Survey?", back: "70% identified as Christian, making it by far the largest religious group in the UK." },
         { id: "fc_4_5_2", front: "What is the official Church of the state in England?", back: "The Church of England (also called the Anglican Church in other countries, and the Episcopal Church in Scotland and the US). It has existed since the Reformation in the 1530s." },
         { id: "fc_4_5_3", front: "Who is the head of the Church of England?", back: "The monarch." },
         { id: "fc_4_5_4", front: "Who is the spiritual leader of the Church of England?", back: "The Archbishop of Canterbury." },
@@ -630,7 +590,7 @@ const CHAPTER_4 = {
         { id: "fc_4_5_7", front: "Is there an established Church in Wales or Northern Ireland?", back: "No, there is no established Church in Wales or Northern Ireland." },
         { id: "fc_4_5_8", front: "What are the patron saints and their days for each UK country?", back: "1 March: St David (Wales). 17 March: St Patrick (Northern Ireland). 23 April: St George (England). 30 November: St Andrew (Scotland)." },
         { id: "fc_4_5_9", front: "Which countries have their patron saint's day as an official holiday?", back: "Only Scotland and Northern Ireland have their patron saint's day as an official holiday." },
-        { id: "fc_4_5_10", front: "What percentage said they had no religion in the 2009 Citizenship Survey?", back: "21%." },
+        { id: "fc_4_5_10", front: "What percentage said they had no religion in the 2009 Citizenship Survey?", back: "21% reported having no religion, making it the second largest group after Christians (70%)." },
       ],
       questions: [
         { id: "q_4_5_1", question: "Who is the head of the Church of England?", options: ["The Archbishop of Canterbury", "The Pope", "The monarch", "The Prime Minister"], correctIndex: 2, explanation: "The monarch is the head of the Church of England. The Archbishop of Canterbury is the spiritual leader." },
@@ -797,7 +757,7 @@ const CHAPTER_5 = {
       flashcards: [
         { id: "fc_5_4_1", front: "What are the two main types of law in the UK?", back: "Criminal law (crimes investigated by police, punished by courts) and civil law (settling disputes between individuals or groups)." },
         { id: "fc_5_4_2", front: "Is it legal to carry a weapon in the UK?", back: "No. It is a criminal offence to carry any weapon, including a gun, knife, or anything made to cause injury, even for self-defence." },
-        { id: "fc_5_4_3", front: "What is the minimum age to buy tobacco?", back: "18." },
+        { id: "fc_5_4_3", front: "What is the minimum age to buy tobacco?", back: "18 years old. It is illegal to sell tobacco products to anyone under 18." },
         { id: "fc_5_4_4", front: "What is the minimum age to buy alcohol?", back: "18. Buying alcohol for someone under 18 is also a criminal offence." },
         { id: "fc_5_4_5", front: "What are the three main duties of the police?", back: "Protect life and property, prevent disturbances (keep the peace), and prevent and detect crime." },
         { id: "fc_5_4_6", front: "What are Police and Crime Commissioners (PCCs)?", back: "Directly elected individuals (since 2012) responsible for the delivery of an efficient police force. They set local police priorities and budget, and appoint the Chief Constable." },

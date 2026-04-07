@@ -300,6 +300,18 @@
       </select>
     </div>
 
+    <!-- Study Mode Toggle -->
+    <div class="flex bg-cream-100 rounded-xl p-1 mb-4">
+      <button id="fc-mode-sequential" onclick="setFcMode('sequential')"
+        class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all bg-white text-brit-blue shadow-sm">
+        📖 Study
+      </button>
+      <button id="fc-mode-review" onclick="setFcMode('review')"
+        class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all text-ink-400">
+        🔀 Review
+      </button>
+    </div>
+
     <!-- Progress Bar -->
     <div class="bg-cream-100 rounded-full h-2 mb-4">
       <div id="fc-progress" class="progress-fill progress-shimmer rounded-full h-2" style="width: 0%"></div>
@@ -870,6 +882,22 @@
     }
 
     // ===== FLASHCARDS =====
+    let fcMode = 'sequential'; // 'sequential' or 'review'
+
+    function setFcMode(mode) {
+      fcMode = mode;
+      const seqBtn = document.getElementById('fc-mode-sequential');
+      const revBtn = document.getElementById('fc-mode-review');
+      if (mode === 'sequential') {
+        seqBtn.className = 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all bg-white text-brit-blue shadow-sm';
+        revBtn.className = 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all text-ink-400';
+      } else {
+        revBtn.className = 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all bg-white text-brit-blue shadow-sm';
+        seqBtn.className = 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all text-ink-400';
+      }
+      loadFlashcardDeck();
+    }
+
     function startFlashcards() {
       showView('flashcards');
       populateChapterSelect();
@@ -918,32 +946,37 @@
         });
       });
 
-      // Spaced repetition: unmastered cards appear 3x more
-      const weighted = [];
-      cards.forEach(card => {
-        const status = userData.flashcards[card.id];
-        if (status?.mastered) {
-          weighted.push(card);
-        } else {
-          weighted.push(card, card, card);
+      if (fcMode === 'sequential') {
+        // Sequential: show cards in chapter/topic order, skip mastered ones
+        fcDeck = cards.filter(card => !userData.flashcards[card.id]?.mastered);
+        // If all mastered, show all cards so user can still browse
+        if (fcDeck.length === 0) fcDeck = cards;
+      } else {
+        // Review mode: spaced repetition — unmastered cards weighted 3x, shuffled
+        const weighted = [];
+        cards.forEach(card => {
+          const status = userData.flashcards[card.id];
+          if (status?.mastered) {
+            weighted.push(card);
+          } else {
+            weighted.push(card, card, card);
+          }
+        });
+        // Shuffle
+        for (let i = weighted.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [weighted[i], weighted[j]] = [weighted[j], weighted[i]];
         }
-      });
-
-      // Shuffle
-      for (let i = weighted.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [weighted[i], weighted[j]] = [weighted[j], weighted[i]];
+        // Deduplicate consecutive
+        fcDeck = [];
+        let lastId = null;
+        weighted.forEach(card => {
+          if (card.id !== lastId) {
+            fcDeck.push(card);
+            lastId = card.id;
+          }
+        });
       }
-
-      // Deduplicate consecutive
-      fcDeck = [];
-      let lastId = null;
-      weighted.forEach(card => {
-        if (card.id !== lastId) {
-          fcDeck.push(card);
-          lastId = card.id;
-        }
-      });
 
       fcIndex = 0;
       fcFlipped = false;
